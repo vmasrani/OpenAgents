@@ -1,4 +1,4 @@
-from src.agents import StructuredOutputAgent, FileAgent
+from src.agents.structured_agent import StructuredOutputAgent
 from dataclasses import dataclass
 from typing import List
 from hypers import TBD

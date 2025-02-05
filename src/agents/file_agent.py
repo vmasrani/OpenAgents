@@ -5,7 +5,7 @@ from openai import OpenAI
 import time
 from ml_helpers import timeit
 import parallel
-from agents.base_agent import BaseAgent
+from src.agents.base_agent import BaseAgent
 
 
 @dataclass

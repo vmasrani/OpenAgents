@@ -1,8 +1,7 @@
-from src.agents import StructuredOutputAgent, FileAgent
+from src.agents.file_agent import FileAgent
 from dataclasses import dataclass
 from typing import List
 from hypers import TBD
-from src.structure import BijectiveListMixin
 
 @dataclass
 class DataProfiler(FileAgent):

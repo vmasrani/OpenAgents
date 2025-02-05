@@ -1,6 +1,7 @@
 from pathlib import Path
 import sys
-from src.assistants import DataProfiler, StructuredCleaner, DataCleaner
+from src.assistants.data_profiler import DataProfiler
+from src.assistants.structured_cleaner import StructuredCleaner
 import pandas as pd
 
 
@@ -26,5 +27,5 @@ def demo_data_cleaning():
 
 
 if __name__ == "__main__":
-    demo_structured_cleaning()
-    # demo_data_cleaning()
+    # demo_structured_cleaning()
+    demo_data_cleaning()

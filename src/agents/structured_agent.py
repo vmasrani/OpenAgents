@@ -5,7 +5,7 @@ from ml_helpers import timeit
 from pydantic import BaseModel
 from hypers import TBD
 import parallel
-from agents.base_agent import BaseAgent
+from src.agents.base_agent import BaseAgent
 
 class StructuredOutputAgent(BaseAgent):
     temperature: float = 0.0
