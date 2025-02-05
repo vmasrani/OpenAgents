@@ -20,9 +20,10 @@ OpenAgents provides a flexible framework for creating AI agents powered by OpenA
 ## Installation
 
 ```bash
-# TODO: Add installation instructions
+pip install -r requirements.txt
 ```
 
+And make sure your your OPENAI_API_KEY is set in your env variables
 ## Quick Start
 
 ```python
