@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from ml_helpers import timeit
 from pydantic import BaseModel
 from hypers import TBD
-
+import parallel
 
 @dataclass
 class Agent(ABC):
@@ -49,6 +49,16 @@ class Agent(ABC):
     def process_response(self, response, *args,**kwargs) -> None:
         """Process the response"""
         pass
+
+    @abstractmethod
+    def run(self, **kwargs) -> None:
+        """Post-process the response"""
+        pass
+
+    def pmap(self, **kwargs) -> None:
+        """Post-process the response"""
+        pass
+
 
 
 @dataclass
@@ -167,6 +177,18 @@ class FileAgent(Agent):
         messages = self.client.beta.threads.messages.list(thread_id=thread.id)
         self.process_response(messages.data[0], file_path)
 
+    def pmap(self, file_paths: List[Path], **kwargs) -> None:
+
+        """Post-process the response"""
+        def make_kwargs(file_path: Path) -> dict:
+            kwargs = kwargs.copy()  # Don't modify original
+            kwargs['file_path'] = file_path
+            return kwargs
+
+        mapped_kwargs = [make_kwargs(fp) for fp in file_paths]
+
+        return parallel.pmap(self.run, mapped_kwargs, prefer='threads', **kwargs)
+
 
 @dataclass
 class StructuredOutputAgent(Agent):
@@ -195,6 +217,7 @@ class StructuredOutputAgent(Agent):
     @timeit(message="Total GPT processing time")
     def run(self, **kwargs) -> None:
         prompt, instructions = self._get_prompt_and_instructions(**kwargs)
+
         response = self.client.beta.chat.completions.parse(
             model=self.model,
             messages=[
@@ -212,24 +235,9 @@ class StructuredOutputAgent(Agent):
         )
         return self.process_response(response)
 
+    def pmap(self, list_of_dicts: List[dict], **kwargs) -> None:
+        return parallel.pmap(lambda x: self.run(**x),
+                             list_of_dicts,
+                             prefer='threads',
+                             **kwargs)
 
-
-@dataclass
-class BijectiveMappingStructure:
-    """Mixin class that defines the structure for bijective mapping operations"""
-
-    class _Output(BaseModel):
-        from_list: list[str]
-        to_list: list[str]
-
-    @property
-    def output(self) -> type[BaseModel]:
-        """Implements StructuredOutputAgent's abstract output property"""
-        return self._Output
-
-    def _post_process(self, parsed):
-        """Post-process the parsed response"""
-        return pd.DataFrame({
-            'from_list': parsed.from_list,
-            'to_list': parsed.to_list,
-        })
