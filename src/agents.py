@@ -29,20 +29,9 @@ class Agent(ABC):
             if fname is not None
         }
 
-    def _validate_template_filled(self, text: str) -> bool:
-        """Check if all template variables in the string have been filled"""
-        try:
-            # This will raise ValueError if any unfilled templates remain
-            text.format()
-            return True
-        except KeyError:
-            return False
-
     def _get_prompt_and_instructions(self, **kwargs) -> tuple[str, str]:
         prompt = self.prompt.format(**kwargs)
         instructions = self.instructions.format(**kwargs)
-        assert self._validate_template_filled(prompt), "Prompt template variables not filled"
-        assert self._validate_template_filled(instructions), "Instructions template variables not filled"
         return prompt, instructions
 
     @abstractmethod
