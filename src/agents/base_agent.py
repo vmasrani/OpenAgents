@@ -3,6 +3,8 @@ from openai import OpenAI
 from string import Formatter
 from abc import ABC, abstractmethod
 
+import pandas as pd
+
 
 @dataclass
 class BaseAgent(ABC):
@@ -27,6 +29,16 @@ class BaseAgent(ABC):
         instructions = self.instructions.format(**kwargs)
         return prompt, instructions
 
+    def split_success_failure(self, res: list) -> tuple[list, list]:
+        successes = [r for r in res if isinstance(r, pd.DataFrame)]
+        failures = [r for r in res if isinstance(r, dict)]
+        if failures:
+            failures = pd.DataFrame(failures)
+        if successes:
+            successes = pd.concat(successes)
+        return successes, failures
+
+
     @abstractmethod
     def process_response(self, response, *args,**kwargs) -> None:
         """Process the response"""
@@ -36,4 +48,5 @@ class BaseAgent(ABC):
     def run(self, **kwargs) -> None:
         """Post-process the response"""
         pass
+
 

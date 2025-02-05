@@ -1,8 +1,11 @@
 from dataclasses import dataclass
 from pathlib import Path
+import random
 from typing import List, Dict
 from openai import OpenAI
 import time
+
+import pandas as pd
 from ml_helpers import timeit
 import parallel
 from src.agents.base_agent import BaseAgent
@@ -29,23 +32,29 @@ class FileAgent(BaseAgent):
         return [tool_mapping[tool] for tool in self.tools]
 
     def save_output_file(self, file_id: str, original_path: Path) -> None:
-        print("Saving output file...")
-        new_filename = original_path.parent / f"{original_path.stem}_cleaned{original_path.suffix}"
+        print(f"Saving results to {original_path}...")
         content = self.client.files.content(file_id)
-        with open(new_filename, "wb") as f:
+        with open(original_path, "wb") as f:
             f.write(content.read())
 
 
-    def process_response(self, response, file_path: Path) -> None:
+    def process_response(self, response, file_path: Path) -> pd.DataFrame:
+        import ipdb; ipdb.set_trace()
         cleaned_file_id = response.attachments[0].file_id if response.attachments else None
+        response_text = ""
         if cleaned_file_id:
             self.save_output_file(cleaned_file_id, file_path)
         else:
-            print("No output file was generated.")
-            print("Assistant's response:")
+            print(f"{file_path} failed to save")
             for content_block in response.content:
                 if content_block.type == 'text':
-                    print(content_block.text.value)
+                    response_text = content_block.text.value
+
+        return pd.DataFrame({
+            'file_path': [str(file_path)],
+            'success': [cleaned_file_id is not None],
+            'response': [response_text]
+        })
 
     def upload_file(self, file_path: Path) -> str:
         response = self.client.files.create(
@@ -122,17 +131,25 @@ class FileAgent(BaseAgent):
 
         # Process results
         messages = self.client.beta.threads.messages.list(thread_id=thread.id)
-        self.process_response(messages.data[0], file_path)
+        return self.process_response(messages.data[0], file_path)
 
-    def pmap(self, file_paths: List[Path], **kwargs) -> None:
+    def pmap(self, file_paths: List[Path], **kwargs) -> tuple[list, list]:
+
+        default_kwargs = kwargs.copy()
 
         """Post-process the response"""
         def make_kwargs(file_path: Path) -> dict:
-            kwargs = kwargs.copy()  # Don't modify original
+            kwargs = default_kwargs.copy()  # Don't modify original
             kwargs['file_path'] = file_path
             return kwargs
 
+        # to avoid rate limiting
+        def jitter_run(kwargs: dict) -> dict:
+            time.sleep(random.uniform(1, 5))
+            return self.run(**kwargs)
+
         mapped_kwargs = [make_kwargs(fp) for fp in file_paths]
 
-        return parallel.pmap(self.run, mapped_kwargs, prefer='threads', **kwargs)
-
+        res = parallel.pmap(jitter_run, mapped_kwargs, prefer='threads', safe_mode=True, **kwargs)
+        successes, failures = self.split_success_failure(res)
+        return successes, failures
